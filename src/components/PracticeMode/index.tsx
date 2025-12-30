@@ -197,9 +197,10 @@ export function PracticeMode() {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-950 grid-background overflow-hidden">
       {/* コンテンツエリア（スクロール可能） */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         <div className="max-w-4xl mx-auto">
-          {/* ロゴ・タイトル */}
+          {/* ロゴ・タイトル（プレイ中以外のみ表示） */}
+          {gameState !== 'playing' && (
           <div className="text-center mb-6 animate-slide-up">
             <div className="inline-block mb-3">
               <div className="relative">
@@ -214,6 +215,7 @@ export function PracticeMode() {
             </div>
             <p className="text-cyan-400 text-sm font-medium tracking-wide">MASTER THE INFINITE</p>
           </div>
+          )}
 
           {/* アイドル状態 */}
           {gameState === 'idle' && (
@@ -308,36 +310,36 @@ export function PracticeMode() {
 
           {/* プレイ中 & プラクティスモード - シームレスな統合 */}
           {gameState === 'playing' && (
-            <div className="space-y-4 pb-8">
+            <div className="space-y-2 pb-2">
               {/* ヘッダーバー（現在の桁数、ベスト、ミュートボタン） */}
-              <div className="flex justify-between items-center p-2 bg-gray-900/50 backdrop-blur-xl rounded-lg border border-blue-500/30">
-                <div className="flex items-center gap-2">
-                  <div className="text-lg font-mono-custom font-bold text-white">
-                    {currentPosition} <span className="text-xs text-gray-500">digits</span>
+              <div className="flex justify-between items-center p-1.5 sm:p-2 bg-gray-900/50 backdrop-blur-xl rounded-lg border border-blue-500/30">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="text-base sm:text-lg font-mono-custom font-bold text-white">
+                    {currentPosition} <span className="text-[10px] sm:text-xs text-gray-500">digits</span>
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs sm:text-sm text-gray-500">
                     / <span className="text-cyan-400 font-bold">{personalBest.maxDigits}</span> best
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   {/* プラクティスモードトグル */}
                   <button
                     onClick={() => setIsPracticeMode(!isPracticeMode)}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                    className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium transition-all ${
                       isPracticeMode
                         ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
                         : 'bg-gray-800 text-gray-400 border border-gray-700'
                     }`}
                     title={isPracticeMode ? 'ヒントを非表示' : 'ヒントを表示'}
                   >
-                    {isPracticeMode ? '👁️' : '👁️‍🗨️'}
+                    <span className="text-xs">{isPracticeMode ? '👁️' : '👁️‍🗨️'}</span>
                     <span className="hidden sm:inline">Hint</span>
                   </button>
 
                   {/* 結果画面へ */}
                   <button
                     onClick={handleEndGame}
-                    className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+                    className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 rounded-lg hover:bg-gray-800 text-xs"
                     title="結果を見る"
                   >
                     📊
@@ -349,7 +351,7 @@ export function PracticeMode() {
                       setIsMuted(!isMuted);
                       initAudioContext();
                     }}
-                    className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+                    className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 rounded-lg hover:bg-gray-800 text-xs"
                     title={isMuted ? 'サウンドON' : 'サウンドOFF'}
                   >
                     {isMuted ? '🔇' : '🔊'}
@@ -359,9 +361,9 @@ export function PracticeMode() {
 
               {/* 語呂合わせ表示（プラクティスモード時） */}
               {isPracticeMode && currentGoroawase && (
-                <div className="bg-cyan-900/20 border border-cyan-900/50 p-2 rounded-lg text-center animate-in slide-in-from-top-2">
-                  <div className="inline-block bg-black/40 px-3 py-1.5 rounded-full border border-cyan-500/30">
-                    <span className="text-cyan-200 text-sm font-bold tracking-wide">
+                <div className="bg-cyan-900/20 border border-cyan-900/50 p-1 rounded-lg text-center animate-in slide-in-from-top-2">
+                  <div className="inline-block bg-black/40 px-2 py-1 rounded-full border border-cyan-500/30">
+                    <span className="text-cyan-200 text-xs font-bold tracking-wide">
                       {currentGoroawase}
                     </span>
                   </div>
@@ -369,16 +371,16 @@ export function PracticeMode() {
               )}
 
               {/* 円周率表示 - 壁のように表示 */}
-              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-4 border shadow-2xl max-h-[400px] overflow-y-auto transition-all ${
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl max-h-[100px] sm:max-h-[120px] md:max-h-[140px] overflow-y-auto transition-all ${
                 isPracticeMode ? 'border-cyan-500/50' : 'border-blue-500/30'
               } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
                 {isPracticeMode && (
-                  <p className="text-xs text-cyan-400 mb-3 text-center uppercase tracking-widest">
+                  <p className="text-[10px] text-cyan-400 mb-1 text-center uppercase tracking-widest">
                     💡 数字をタップで巻き戻し
                   </p>
                 )}
-                <div className="font-mono-custom text-3xl md:text-4xl leading-tight tracking-widest break-all">
+                <div className="font-mono-custom text-xl sm:text-2xl md:text-3xl leading-tight tracking-widest break-all">
                   {fullInput.split('').map((char, i) => {
                     const isClickable = isPracticeMode && i > 1;
                     return (
@@ -485,7 +487,7 @@ export function PracticeMode() {
       {/* NumPad（固定配置、playingモードのみ表示） */}
       {gameState === 'playing' && (
         <div className="flex-shrink-0 border-t border-blue-500/30 bg-gray-900/80 backdrop-blur-xl">
-          <div className="max-w-md mx-auto py-3">
+          <div className="max-w-md mx-auto py-2">
             <NumPad onDigitClick={handleDigitInput} disabled={false} />
           </div>
         </div>
