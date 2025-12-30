@@ -1,34 +1,136 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { PersonalBest } from '../../types';
 import { NumPad } from './NumPad';
-import { getDigits } from '../../services/piDigits';
+import { getDigits, getDigitAt } from '../../services/piDigits';
+import { getCurrentGoroawase } from '../../services/goroawase';
 
 const defaultPersonalBest: PersonalBest = {
   maxDigits: 0,
   maxDigitsDate: 0,
   totalSessions: 0,
   totalDigitsTyped: 0,
+  mistakesByIndex: {},
+  history: [],
 };
 
 export function PracticeMode() {
-  const { gameState, currentPosition, inputHistory, startGame, validateInput, resetGame, getElapsedTime } =
+  const { gameState, currentPosition, inputHistory, startGame, validateInput, resetGame, rewindToPosition } =
     useGameState();
   const [personalBest, setPersonalBest] = useLocalStorage<PersonalBest>(
     'piflow_personal_best',
     defaultPersonalBest
   );
   const [lastInputCorrect, setLastInputCorrect] = useState<boolean | null>(null);
+  const [mistakeCount, setMistakeCount] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+
+  // オーディオ関連のRef
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const noiseBufferRef = useRef<AudioBuffer | null>(null);
+
+  // オーディオコンテキストを初期化
+  const initAudioContext = () => {
+    if (!audioCtxRef.current) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass();
+        audioCtxRef.current = ctx;
+
+        // ホワイトノイズバッファを生成（メカニカルなクリック音用）
+        const bufferSize = ctx.sampleRate;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        noiseBufferRef.current = buffer;
+      }
+    }
+
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch((e) => console.error('Audio resume failed', e));
+    }
+  };
+
+  // クリック音を再生（正解時）
+  const playClickSound = () => {
+    if (isMuted || !audioCtxRef.current) return;
+
+    try {
+      const ctx = audioCtxRef.current;
+      const t = ctx.currentTime;
+
+      // メカニカルなクリック音（ノイズバースト）
+      if (noiseBufferRef.current) {
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBufferRef.current;
+
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.8, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+
+        noise.start(t);
+        noise.stop(t + 0.05);
+      }
+
+      // 低音の共鳴（ボディの響き）
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, t);
+      osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+
+      osc.start(t);
+      osc.stop(t + 0.1);
+    } catch (e) {
+      console.error('Audio play failed', e);
+    }
+  };
 
   const handleDigitInput = (digit: string) => {
     const result = validateInput(digit);
     setLastInputCorrect(result.isCorrect);
 
+    // 正解時にクリック音を再生
+    if (result.isCorrect) {
+      playClickSound();
+    }
+
+    // ミスをカウント
+    if (!result.isCorrect) {
+      setMistakeCount((prev) => prev + 1);
+
+      // ミスした位置を記録
+      const mistakes = personalBest.mistakesByIndex || {};
+      mistakes[currentPosition] = (mistakes[currentPosition] || 0) + 1;
+      setPersonalBest({
+        ...personalBest,
+        mistakesByIndex: mistakes,
+      });
+    }
+
     // アニメーションのためのリセット
     setTimeout(() => setLastInputCorrect(null), 300);
 
-    // ゲーム終了時の処理
+    // ゲーム終了時の処理（プレイ中から初めてミスした時）
     if (!result.isCorrect && gameState === 'playing') {
       // 最高記録更新チェック
       if (currentPosition > personalBest.maxDigits) {
@@ -38,6 +140,8 @@ export function PracticeMode() {
           maxDigitsDate: Date.now(),
           totalSessions: personalBest.totalSessions + 1,
           totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
+          mistakesByIndex: personalBest.mistakesByIndex,
+          history: personalBest.history,
         });
       } else {
         setPersonalBest({
@@ -49,23 +153,43 @@ export function PracticeMode() {
     }
   };
 
+  // ゲーム開始時の処理
+  const handleStartGame = () => {
+    initAudioContext(); // オーディオを初期化
+    startGame();
+    setMistakeCount(0);
+    setSessionStartTime(Date.now());
+  };
+
   // Enterキーでゲーム開始
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && gameState === 'idle') {
-        startGame();
+        handleStartGame();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, startGame]);
+  }, [gameState]);
 
-  // 入力済み桁を表示用に整形（最新30桁のみ）
-  const displayedDigits = inputHistory.slice(-30).join('');
+  // 入力済み桁を表示用に整形（全桁表示）
+  const displayedDigits = inputHistory.join('');
 
   // プラクティスモード用：次の10桁を取得
   const nextDigits = gameState === 'practice' ? getDigits(currentPosition, currentPosition + 10) : '';
+
+  // 完全な入力文字列（"3." + 入力済み桁）
+  const fullInput = '3.' + displayedDigits;
+
+  // 巻き戻しハンドラー
+  const handleRewind = (index: number) => {
+    if (gameState !== 'practice' || index <= 1) return; // "3."の部分はクリック不可
+    rewindToPosition(index);
+  };
+
+  // 現在位置の語呂合わせを取得
+  const currentGoroawase = getCurrentGoroawase(currentPosition);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-950 grid-background overflow-hidden">
@@ -111,29 +235,102 @@ export function PracticeMode() {
                 </div>
 
                 <button
-                  onClick={startGame}
+                  onClick={handleStartGame}
                   className="group relative px-16 py-5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative">練習開始</span>
                 </button>
 
-                {personalBest.maxDigits > 0 && (
-                  <div className="mt-10 p-8 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-3xl border-2 border-cyan-500/50 shadow-xl">
-                    <p className="text-sm text-cyan-400 mb-3 font-medium">🏆 最高記録</p>
-                    <p className="text-6xl font-bold font-mono-custom bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
+                {/* 統計情報グリッド */}
+                <div className="mt-10 grid grid-cols-2 gap-4">
+                  <div className="p-6 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-2xl border-2 border-cyan-500/50 shadow-xl text-center">
+                    <p className="text-xs text-cyan-400 mb-2 font-medium">🏆 最高記録</p>
+                    <p className="text-5xl font-bold font-mono-custom bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
                       {personalBest.maxDigits}
-                      <span className="text-2xl ml-2">桁</span>
                     </p>
+                    <p className="text-sm text-gray-500 mt-1">桁</p>
+                  </div>
+                  <div className="p-6 bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-2xl border-2 border-blue-500/50 shadow-xl text-center">
+                    <p className="text-xs text-blue-400 mb-2 font-medium">📊 総入力数</p>
+                    <p className="text-5xl font-bold font-mono-custom text-blue-300">
+                      {personalBest.totalDigitsTyped > 1000
+                        ? (personalBest.totalDigitsTyped / 1000).toFixed(1) + 'k'
+                        : personalBest.totalDigitsTyped}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">digits</p>
+                  </div>
+                </div>
+
+                {/* 苦手エリア分析 */}
+                {personalBest.mistakesByIndex && Object.keys(personalBest.mistakesByIndex).length > 0 && (
+                  <div className="mt-6 bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-gray-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                        ⚠️ 苦手エリア分析
+                      </h3>
+                    </div>
+                    <div className="h-32 flex items-end justify-between gap-1">
+                      {Array.from({ length: 10 }).map((_, i) => {
+                        const start = i * 5;
+                        const end = start + 5;
+                        let mistakes = 0;
+                        for (let k = start; k < end; k++) {
+                          mistakes += personalBest.mistakesByIndex?.[k] || 0;
+                        }
+                        const height = Math.min(100, mistakes * 10);
+                        const intensity = mistakes > 0 ? 'bg-red-500' : 'bg-gray-700';
+
+                        return (
+                          <div key={i} className="flex-1 flex flex-col justify-end group relative">
+                            <div
+                              style={{ height: `${Math.max(4, height)}%` }}
+                              className={`w-full rounded-t-sm transition-all ${intensity} opacity-80 group-hover:opacity-100`}
+                            />
+                            {mistakes > 0 && (
+                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-red-400 font-bold">{mistakes}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="text-xs text-gray-600 text-center mt-3">桁数 (1 - 50)</div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* プレイ中 */}
-          {gameState === 'playing' && (
+          {/* プレイ中 & プラクティスモード - シームレスな統合 */}
+          {(gameState === 'playing' || gameState === 'practice') && (
             <div className="space-y-6 pb-8">
+              {/* ヘッダーバー（現在の桁数とミュートボタン） */}
+              <div className="flex justify-between items-center p-4 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-blue-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="text-xl font-mono-custom font-bold text-white">
+                    {currentPosition} <span className="text-xs text-gray-500">digits</span>
+                  </div>
+                  {/* プラクティスモードバッジ */}
+                  {gameState === 'practice' && (
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-bold flex items-center gap-1">
+                      📚 Practice
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setIsMuted(!isMuted);
+                    initAudioContext();
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+                  title={isMuted ? 'サウンドON' : 'サウンドOFF'}
+                >
+                  {isMuted ? '🔇' : '🔊'}
+                </button>
+              </div>
+
               {/* 進捗表示 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
@@ -150,19 +347,50 @@ export function PracticeMode() {
                 </div>
               </div>
 
-              {/* 円周率表示 */}
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 border-blue-500/30 shadow-2xl">
-                <div className="text-center">
-                  <div className="text-7xl font-bold text-white mb-6 font-mono-custom">
-                    3<span className="text-cyan-400">.</span>
+              {/* 語呂合わせ表示（プラクティスモード時） */}
+              {gameState === 'practice' && currentGoroawase && (
+                <div className="bg-cyan-900/20 border border-cyan-900/50 p-3 rounded-2xl text-center animate-in slide-in-from-top-2">
+                  <div className="inline-block bg-black/40 px-4 py-2 rounded-full border border-cyan-500/30">
+                    <span className="text-cyan-200 text-sm font-bold tracking-wide">
+                      {currentGoroawase}
+                    </span>
                   </div>
-                  {displayedDigits && (
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 blur-xl"></div>
-                      <p className="relative text-3xl font-mono-custom text-blue-200 break-all leading-relaxed tracking-wider">
-                        {displayedDigits}
-                      </p>
-                    </div>
+                </div>
+              )}
+
+              {/* 円周率表示 - 壁のように表示 */}
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 shadow-2xl max-h-[400px] overflow-y-auto ${
+                gameState === 'practice' ? 'border-cyan-500/50' : 'border-blue-500/30'
+              }`}>
+                {/* プラクティスモード時のヒント */}
+                {gameState === 'practice' && (
+                  <p className="text-xs text-cyan-400 mb-4 text-center uppercase tracking-widest">
+                    💡 数字をタップで巻き戻し
+                  </p>
+                )}
+                <div className="font-mono-custom text-4xl md:text-5xl leading-tight tracking-widest break-all">
+                  {fullInput.split('').map((char, i) => {
+                    const isClickable = gameState === 'practice' && i > 1;
+                    return (
+                      <span
+                        key={i}
+                        onClick={() => handleRewind(i)}
+                        className={`transition-colors duration-200 ${
+                          char === '.' ? 'text-cyan-400' : 'text-blue-300'
+                        } ${isClickable ? 'hover:text-red-400 hover:underline cursor-pointer' : ''}`}
+                        title={isClickable ? 'ここまで巻き戻す' : ''}
+                      >
+                        {char}
+                      </span>
+                    );
+                  })}
+                  {/* カーソル */}
+                  <span className="inline-block w-[3px] h-[1em] bg-cyan-500/70 animate-pulse align-middle ml-1 -mr-1"></span>
+                  {/* ヒント：次の10桁（プラクティスモード時） */}
+                  {gameState === 'practice' && (
+                    <span className="text-gray-600 opacity-60 select-none pointer-events-none transition-opacity duration-300">
+                      {nextDigits}
+                    </span>
                   )}
                 </div>
               </div>
@@ -182,91 +410,74 @@ export function PracticeMode() {
             </div>
           )}
 
-          {/* プラクティスモード */}
-          {gameState === 'practice' && (
-            <div className="space-y-6 pb-8">
-              {/* プラクティスモードヘッダー */}
-              <div className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 backdrop-blur-xl rounded-3xl p-8 border-2 border-cyan-500/50 shadow-2xl">
-                <div className="text-center mb-6">
-                  <span className="inline-block px-6 py-3 bg-cyan-500/20 border-2 border-cyan-400/50 text-cyan-300 rounded-full font-bold text-lg">
-                    📚 プラクティスモード
-                  </span>
-                </div>
-
-                <div className="space-y-4 mb-8">
-                  <p className="text-gray-300">
-                    間違えた位置: <span className="font-bold text-2xl font-mono-custom text-red-400">{currentPosition + 1}桁目</span>
-                  </p>
-                  <p className="text-gray-300">
-                    到達桁数: <span className="font-bold text-3xl font-mono-custom text-cyan-400">{currentPosition}桁</span>
-                  </p>
-                </div>
-
-                {/* 次の10桁をグレーで表示 */}
-                <div className="mb-8 bg-gray-900/50 rounded-2xl p-6">
-                  <p className="text-xs text-gray-500 mb-4 uppercase tracking-widest">次の10桁（参考）</p>
-                  <div className="text-center">
-                    <span className="text-5xl font-bold font-mono-custom text-white">3.</span>
-                    {displayedDigits && (
-                      <span className="text-2xl font-mono-custom text-blue-300 ml-2">{displayedDigits}</span>
-                    )}
-                    <span className="text-2xl font-mono-custom text-gray-600 ml-2">{nextDigits}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={resetGame}
-                  className="w-full px-8 py-5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                >
-                  もう一度チャレンジ
-                </button>
-              </div>
-
-              {personalBest.maxDigits > 0 && (
-                <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-2xl p-6 border-2 border-cyan-500/50 text-center">
-                  <p className="text-sm text-cyan-400 mb-2 font-medium">🏆 最高記録</p>
-                  <p className="text-4xl font-bold font-mono-custom text-cyan-300">
-                    {personalBest.maxDigits}桁
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 終了状態 */}
+          {/* 終了状態 - 充実した結果画面 */}
           {gameState === 'finished' && (
-            <div className="text-center pb-8">
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-3xl p-12 border-2 border-blue-500/30 shadow-2xl">
+            <div className="space-y-6 pb-8">
+              {/* 最終スコア */}
+              <div className="text-center">
+                <div className="text-sm font-bold text-cyan-500 mb-2 uppercase tracking-widest">Session Complete</div>
+                <h2 className="text-7xl font-black text-white font-mono-custom mb-1">{currentPosition}</h2>
+                <p className="text-gray-400">Digits Memorized</p>
+
                 {currentPosition > personalBest.maxDigits && (
-                  <div className="mb-8 animate-bounce">
-                    <p className="text-7xl mb-4">🎉</p>
-                    <p className="text-4xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
+                  <div className="mt-4 animate-bounce">
+                    <p className="text-5xl">🏆</p>
+                    <p className="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
                       新記録達成！
                     </p>
                   </div>
                 )}
+              </div>
 
-                <h2 className="text-2xl text-gray-400 mb-8 uppercase tracking-widest">結果</h2>
-
-                <div className="mb-8">
-                  <p className="text-xs text-gray-500 mb-3 uppercase tracking-widest">到達桁数</p>
-                  <p className="text-8xl font-bold font-mono-custom bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                    {currentPosition}
-                  </p>
+              {/* 統計情報 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
+                  <div className="text-xs text-gray-500 uppercase">Speed</div>
+                  <div className="text-4xl font-bold text-white font-mono-custom">
+                    {sessionStartTime > 0 ? ((currentPosition / ((Date.now() - sessionStartTime) / 1000)) || 0).toFixed(1) : '0.0'}
+                  </div>
+                  <div className="text-xs text-gray-500">digits/sec</div>
                 </div>
-
-                <div className="mb-10">
-                  <p className="text-xs text-gray-500 mb-2 uppercase tracking-widest">所要時間</p>
-                  <p className="text-4xl font-mono-custom text-gray-300">
-                    {getElapsedTime()}秒
-                  </p>
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
+                  <div className="text-xs text-gray-500 uppercase">Mistakes</div>
+                  <div className="text-4xl font-bold text-red-400 font-mono-custom">{mistakeCount}</div>
+                  <div className="text-xs text-gray-500">count</div>
                 </div>
+              </div>
 
+              {/* 次のステップ */}
+              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-cyan-500/30">
+                <h3 className="text-gray-300 font-bold mb-3 text-sm">Next Steps</h3>
+                <div className="flex items-start gap-3 p-4 bg-gray-800 rounded-lg">
+                  <div className="text-cyan-500 mt-1 shrink-0">→</div>
+                  <div>
+                    <p className="text-white text-lg font-mono-custom break-all">
+                      ...{getDigits(Math.max(0, currentPosition - 5), currentPosition)}
+                      <span className="text-red-400 font-bold mx-1 border-b-2 border-red-500">
+                        {getDigitAt(currentPosition)}
+                      </span>
+                      {getDigits(currentPosition + 1, currentPosition + 6)}...
+                    </p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      次は「<span className="text-white font-bold">{getDigitAt(currentPosition)}</span>」です。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* アクションボタン */}
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={resetGame}
-                  className="w-full px-8 py-5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                 >
-                  もう一度
+                  メニュー
+                </button>
+                <button
+                  onClick={handleStartGame}
+                  className="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                >
+                  リトライ
                 </button>
               </div>
             </div>

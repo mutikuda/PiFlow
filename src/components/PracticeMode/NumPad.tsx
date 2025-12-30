@@ -39,7 +39,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
             onClick={() => handleClick(digit)}
             disabled={disabled}
             className={`
-              group relative aspect-square rounded-xl text-3xl font-bold font-mono-custom
+              group relative h-16 rounded-xl text-3xl font-bold font-mono-custom
               transition-all duration-200 transform
               bg-gradient-to-br from-gray-800 to-gray-900
               border-2 border-blue-500/30
@@ -50,6 +50,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
               disabled:hover:scale-100
               overflow-hidden
               focus:outline-none focus:ring-2 focus:ring-cyan-400/50
+              touch-manipulation
             `}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
@@ -69,7 +70,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
             onClick={() => handleClick('0')}
             disabled={disabled}
             className={`
-              group relative w-full aspect-square rounded-xl text-3xl font-bold font-mono-custom
+              group relative w-full h-16 rounded-xl text-3xl font-bold font-mono-custom
               transition-all duration-200 transform
               bg-gradient-to-br from-gray-800 to-gray-900
               border-2 border-blue-500/30
@@ -80,6 +81,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
               disabled:hover:scale-100
               overflow-hidden
               focus:outline-none focus:ring-2 focus:ring-cyan-400/50
+              touch-manipulation
             `}
             style={{ animationDelay: '0.45s' }}
           >

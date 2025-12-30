@@ -75,6 +75,19 @@ export function useGameState() {
     return Math.floor((Date.now() - startTime) / 1000);
   }, [startTime]);
 
+  /**
+   * 指定した位置まで巻き戻す（プラクティスモード専用）
+   */
+  const rewindToPosition = useCallback((index: number) => {
+    if (gameState !== 'practice' || index < 0) return;
+
+    // indexは"3."を含めた位置なので、-2して桁数に変換
+    const targetPosition = Math.max(0, index - 2);
+
+    setInputHistory((prev) => prev.slice(0, targetPosition));
+    setCurrentPosition(targetPosition);
+  }, [gameState]);
+
   return {
     gameState,
     currentPosition,
@@ -83,5 +96,6 @@ export function useGameState() {
     validateInput,
     resetGame,
     getElapsedTime,
+    rewindToPosition,
   };
 }
