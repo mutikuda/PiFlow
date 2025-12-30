@@ -372,8 +372,8 @@ export function PracticeMode() {
               {/* 円周率表示 - 壁のように表示 */}
               <div
                 ref={inputDisplayRef}
-                className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl overflow-y-auto transition-all ${
-                isPracticeMode ? 'border-cyan-500/50 h-[198px] sm:h-[230px] md:h-[276px]' : 'border-blue-500/30 h-[138px] sm:h-[165px] md:h-[206px]'
+                className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl h-[198px] sm:h-[230px] md:h-[276px] overflow-y-auto transition-all ${
+                isPracticeMode ? 'border-cyan-500/50' : 'border-blue-500/30'
               } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
                 {isPracticeMode && (
