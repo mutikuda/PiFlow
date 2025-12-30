@@ -22,6 +22,8 @@ export interface PersonalBest {
   totalSessions: number;
   totalDigitsTyped: number;
   mistakesByIndex?: Record<number, number>; // 桁位置ごとのミス回数
+  attemptsByIndex?: Record<number, number>; // 桁位置ごとの試行回数
+  digitConfusion?: Record<string, Record<string, number>>; // 間違えた数字のパターン {正解数字: {入力数字: 回数}}
   history?: SessionHistory[]; // セッション履歴
 }
 

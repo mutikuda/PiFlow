@@ -12,6 +12,8 @@ const defaultPersonalBest: PersonalBest = {
   totalSessions: 0,
   totalDigitsTyped: 0,
   mistakesByIndex: {},
+  attemptsByIndex: {},
+  digitConfusion: {},
   history: [],
 };
 
@@ -119,6 +121,10 @@ export function PracticeMode() {
       playClickSound();
     }
 
+    // 試行回数を記録（正解・不正解に関わらず）
+    const attempts = personalBest.attemptsByIndex || {};
+    attempts[currentPosition] = (attempts[currentPosition] || 0) + 1;
+
     // ミスをカウント
     if (!result.isCorrect) {
       setMistakeCount((prev) => prev + 1);
@@ -126,9 +132,26 @@ export function PracticeMode() {
       // ミスした位置を記録
       const mistakes = personalBest.mistakesByIndex || {};
       mistakes[currentPosition] = (mistakes[currentPosition] || 0) + 1;
+
+      // 間違えた数字のパターンを記録
+      const confusion = personalBest.digitConfusion || {};
+      const correctDigit = result.correctDigit;
+      if (!confusion[correctDigit]) {
+        confusion[correctDigit] = {};
+      }
+      confusion[correctDigit][digit] = (confusion[correctDigit][digit] || 0) + 1;
+
       setPersonalBest({
         ...personalBest,
         mistakesByIndex: mistakes,
+        attemptsByIndex: attempts,
+        digitConfusion: confusion,
+      });
+    } else {
+      // 正解時も試行回数を更新
+      setPersonalBest({
+        ...personalBest,
+        attemptsByIndex: attempts,
       });
     }
 
@@ -291,39 +314,119 @@ export function PracticeMode() {
 
                 {/* 苦手エリア分析 */}
                 {personalBest.mistakesByIndex && Object.keys(personalBest.mistakesByIndex).length > 0 && (
-                  <div className="mt-4 bg-gray-900/50 backdrop-blur-xl rounded-lg p-4 border border-gray-800">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="mt-4 bg-gray-900/50 backdrop-blur-xl rounded-lg p-4 border border-gray-800 space-y-4">
+                    <div className="flex items-center justify-between">
                       <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-2">
                         ⚠️ 苦手エリア分析
                       </h3>
                     </div>
-                    <div className="h-24 flex items-end justify-between gap-1">
-                      {Array.from({ length: 10 }).map((_, i) => {
-                        const start = i * 5;
-                        const end = start + 5;
-                        let mistakes = 0;
-                        for (let k = start; k < end; k++) {
-                          mistakes += personalBest.mistakesByIndex?.[k] || 0;
-                        }
-                        const height = Math.min(100, mistakes * 10);
-                        const intensity = mistakes > 0 ? 'bg-red-500' : 'bg-gray-700';
 
-                        return (
-                          <div key={i} className="flex-1 flex flex-col justify-end group relative">
-                            <div
-                              style={{ height: `${Math.max(4, height)}%` }}
-                              className={`w-full rounded-t-sm transition-all ${intensity} opacity-80 group-hover:opacity-100`}
-                            />
-                            {mistakes > 0 && (
-                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-xs text-red-400 font-bold">{mistakes}</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                    {/* ヒートマップ */}
+                    <div>
+                      <div className="text-[10px] text-gray-500 mb-2">エラー発生頻度</div>
+                      <div className="h-20 flex items-end justify-between gap-0.5">
+                        {Array.from({ length: 20 }).map((_, i) => {
+                          const start = i * 5;
+                          const end = start + 5;
+                          let mistakes = 0;
+                          let attempts = 0;
+                          for (let k = start; k < end; k++) {
+                            mistakes += personalBest.mistakesByIndex?.[k] || 0;
+                            attempts += personalBest.attemptsByIndex?.[k] || 0;
+                          }
+                          const errorRate = attempts > 0 ? (mistakes / attempts) * 100 : 0;
+                          const height = Math.min(100, errorRate * 2);
+
+                          let intensity = 'bg-gray-700';
+                          if (errorRate > 50) intensity = 'bg-red-500';
+                          else if (errorRate > 30) intensity = 'bg-orange-500';
+                          else if (errorRate > 10) intensity = 'bg-yellow-500';
+                          else if (errorRate > 0) intensity = 'bg-green-500';
+
+                          return (
+                            <div key={i} className="flex-1 flex flex-col justify-end group relative">
+                              <div
+                                style={{ height: `${Math.max(4, height)}%` }}
+                                className={`w-full rounded-t-sm transition-all ${intensity} opacity-80 group-hover:opacity-100`}
+                              />
+                              {errorRate > 0 && (
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-1 py-0.5 rounded text-center whitespace-nowrap">
+                                  <div className="text-[10px] text-red-400 font-bold">{errorRate.toFixed(0)}%</div>
+                                  <div className="text-[9px] text-gray-400">{start+1}-{end}</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="text-[9px] text-gray-600 text-center mt-2">桁数 1-100 (エラー率 %)</div>
                     </div>
-                    <div className="text-xs text-gray-600 text-center mt-3">桁数 (1 - 50)</div>
+
+                    {/* TOP苦手桁 */}
+                    {(() => {
+                      const weakPositions = Object.entries(personalBest.mistakesByIndex || {})
+                        .map(([pos, mistakes]) => {
+                          const position = parseInt(pos);
+                          const attempts = personalBest.attemptsByIndex?.[position] || 0;
+                          const errorRate = attempts > 0 ? (mistakes / attempts) * 100 : 0;
+                          return { position, mistakes, attempts, errorRate };
+                        })
+                        .filter(item => item.errorRate > 0)
+                        .sort((a, b) => b.errorRate - a.errorRate)
+                        .slice(0, 5);
+
+                      return weakPositions.length > 0 ? (
+                        <div>
+                          <div className="text-[10px] text-gray-500 mb-2">最も間違えやすい桁 TOP5</div>
+                          <div className="space-y-1">
+                            {weakPositions.map((item, idx) => (
+                              <div key={item.position} className="flex items-center gap-2 text-xs bg-gray-800/50 rounded px-2 py-1">
+                                <span className="text-yellow-500 font-bold w-4">{idx + 1}</span>
+                                <span className="text-cyan-400 font-mono-custom">{item.position + 1}桁目</span>
+                                <span className="text-gray-500">({getDigitAt(item.position)})</span>
+                                <div className="flex-1"></div>
+                                <span className="text-red-400 font-bold">{item.errorRate.toFixed(0)}%</span>
+                                <span className="text-gray-600 text-[10px]">{item.mistakes}/{item.attempts}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* よく間違える数字のパターン */}
+                    {(() => {
+                      const confusionPatterns = [];
+                      const confusion = personalBest.digitConfusion || {};
+                      for (const correctDigit in confusion) {
+                        for (const wrongDigit in confusion[correctDigit]) {
+                          const count = confusion[correctDigit][wrongDigit];
+                          confusionPatterns.push({
+                            correct: correctDigit,
+                            wrong: wrongDigit,
+                            count
+                          });
+                        }
+                      }
+                      confusionPatterns.sort((a, b) => b.count - a.count);
+                      const topPatterns = confusionPatterns.slice(0, 3);
+
+                      return topPatterns.length > 0 ? (
+                        <div>
+                          <div className="text-[10px] text-gray-500 mb-2">よく間違える数字の組み合わせ</div>
+                          <div className="flex flex-wrap gap-2">
+                            {topPatterns.map((pattern, idx) => (
+                              <div key={idx} className="flex items-center gap-1 bg-gray-800/50 rounded px-2 py-1 text-xs">
+                                <span className="text-green-400 font-mono-custom font-bold">{pattern.correct}</span>
+                                <span className="text-gray-500">→</span>
+                                <span className="text-red-400 font-mono-custom font-bold">{pattern.wrong}</span>
+                                <span className="text-gray-600 text-[10px]">×{pattern.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
