@@ -194,7 +194,7 @@ export function PracticeMode() {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-950 grid-background overflow-hidden">
       {/* コンテンツエリア（スクロール可能） */}
-      <div className="flex-1 overflow-y-auto px-4 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         <div className="max-w-4xl mx-auto">
           {/* ロゴ・タイトル */}
           <div className="text-center mb-12 animate-slide-up">
@@ -307,7 +307,7 @@ export function PracticeMode() {
           {(gameState === 'playing' || gameState === 'practice') && (
             <div className="space-y-6 pb-8">
               {/* ヘッダーバー（現在の桁数とミュートボタン） */}
-              <div className="flex justify-between items-center p-4 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-blue-500/30">
+              <div className="flex justify-between items-center p-3 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-blue-500/30">
                 <div className="flex items-center gap-3">
                   <div className="text-xl font-mono-custom font-bold text-white">
                     {currentPosition} <span className="text-xs text-gray-500">digits</span>
@@ -333,13 +333,13 @@ export function PracticeMode() {
 
               {/* 進捗表示 */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-4 border-2 border-blue-500/30 text-center">
                   <p className="text-xs text-gray-400 mb-2 uppercase tracking-widest">現在の桁数</p>
                   <p className="text-5xl font-bold font-mono-custom bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
                     {currentPosition}
                   </p>
                 </div>
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-cyan-500/30 text-center">
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-4 border-2 border-cyan-500/30 text-center">
                   <p className="text-xs text-gray-400 mb-2 uppercase tracking-widest">ベスト</p>
                   <p className="text-4xl font-bold font-mono-custom text-cyan-400">
                     {personalBest.maxDigits}
@@ -359,16 +359,16 @@ export function PracticeMode() {
               )}
 
               {/* 円周率表示 - 壁のように表示 */}
-              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 shadow-2xl max-h-[400px] overflow-y-auto ${
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-3xl p-4 border-2 shadow-2xl max-h-[400px] overflow-y-auto ${
                 gameState === 'practice' ? 'border-cyan-500/50' : 'border-blue-500/30'
               }`}>
                 {/* プラクティスモード時のヒント */}
                 {gameState === 'practice' && (
-                  <p className="text-xs text-cyan-400 mb-4 text-center uppercase tracking-widest">
+                  <p className="text-xs text-cyan-400 mb-3 text-center uppercase tracking-widest">
                     💡 数字をタップで巻き戻し
                   </p>
                 )}
-                <div className="font-mono-custom text-4xl md:text-5xl leading-tight tracking-widest break-all">
+                <div className="font-mono-custom text-3xl md:text-4xl leading-tight tracking-widest break-all">
                   {fullInput.split('').map((char, i) => {
                     const isClickable = gameState === 'practice' && i > 1;
                     return (
@@ -488,7 +488,7 @@ export function PracticeMode() {
       {/* NumPad（固定配置、playing/practiceモードのみ表示） */}
       {(gameState === 'playing' || gameState === 'practice') && (
         <div className="flex-shrink-0 border-t-2 border-blue-500/30 bg-gray-900/80 backdrop-blur-xl">
-          <div className="max-w-md mx-auto py-6">
+          <div className="max-w-md mx-auto py-3">
             <NumPad onDigitClick={handleDigitInput} disabled={gameState !== 'playing' && gameState !== 'practice'} />
           </div>
         </div>
