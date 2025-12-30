@@ -18,27 +18,82 @@
 
 ### 方法1: GitHub Actions（推奨）
 
-すでに `.github/workflows/deploy.yml` が用意されています。
+自動デプロイを設定するには、GitHub Actionsのワークフローファイルを作成します。
 
 #### 手順：
 
-1. **GitHub Pagesを有効化**
+1. **ワークフローファイルを作成**
+
+   `.github/workflows/deploy.yml` を以下の内容で作成：
+
+   ```yaml
+   name: Deploy to GitHub Pages
+
+   on:
+     push:
+       branches: [main]
+     workflow_dispatch:
+
+   permissions:
+     contents: read
+     pages: write
+     id-token: write
+
+   jobs:
+     build:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout
+           uses: actions/checkout@v4
+
+         - name: Setup Node.js
+           uses: actions/setup-node@v4
+           with:
+             node-version: '18'
+             cache: 'npm'
+
+         - name: Install dependencies
+           run: npm ci
+
+         - name: Build
+           run: npm run build
+
+         - name: Setup Pages
+           uses: actions/configure-pages@v4
+
+         - name: Upload artifact
+           uses: actions/upload-pages-artifact@v3
+           with:
+             path: './dist'
+
+     deploy:
+       environment:
+         name: github-pages
+         url: ${{ steps.deployment.outputs.page_url }}
+       runs-on: ubuntu-latest
+       needs: build
+       steps:
+         - name: Deploy to GitHub Pages
+           id: deployment
+           uses: actions/deploy-pages@v4
+   ```
+
+2. **GitHub Pagesを有効化**
    - GitHubリポジトリ → Settings → Pages
    - Source: "GitHub Actions" を選択
 
-2. **mainブランチにマージ**
+3. **mainブランチにプッシュ**
    ```bash
-   # 現在のブランチからmainにマージ
-   git checkout main
-   git merge claude/pi-memorization-tool-design-5gD4p
+   git add .github/workflows/deploy.yml
+   git commit -m "Add GitHub Actions workflow"
    git push origin main
    ```
 
-3. **自動デプロイ開始**
+4. **自動デプロイ開始**
    - プッシュ後、自動的にビルド＆デプロイが開始されます
    - Actions タブで進捗確認
 
-4. **公開URL確認**
+5. **公開URL確認**
    - デプロイ完了後、以下のURLでアクセス可能：
    ```
    https://mutikuda.github.io/PiFlow/
