@@ -369,19 +369,6 @@ export function PracticeMode() {
                 </div>
               </div>
 
-              {/* 語呂合わせ表示（プラクティスモード時） - 固定高さで領域確保 */}
-              <div className="h-[32px] sm:h-[36px] flex items-center justify-center">
-                {isPracticeMode && currentGoroawase && (
-                  <div className="bg-cyan-900/20 border border-cyan-900/50 p-1 rounded-lg text-center animate-in slide-in-from-top-2">
-                    <div className="inline-block bg-black/40 px-2 py-1 rounded-full border border-cyan-500/30">
-                      <span className="text-cyan-200 text-xs font-bold tracking-wide">
-                        {currentGoroawase}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* 円周率表示 - 壁のように表示 */}
               <div
                 ref={inputDisplayRef}
@@ -390,9 +377,21 @@ export function PracticeMode() {
               } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
                 {isPracticeMode && (
-                  <p className="text-[10px] text-cyan-400 mb-1 text-center uppercase tracking-widest">
-                    💡 数字をタップで巻き戻し
-                  </p>
+                  <div className="mb-2">
+                    <p className="text-[10px] text-cyan-400 mb-1 text-center uppercase tracking-widest">
+                      💡 数字をタップで巻き戻し
+                    </p>
+                    {/* 語呂合わせ表示 */}
+                    {currentGoroawase && (
+                      <div className="text-center">
+                        <div className="inline-block bg-black/40 px-2 py-1 rounded-full border border-cyan-500/30">
+                          <span className="text-cyan-200 text-xs font-bold tracking-wide">
+                            {currentGoroawase}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="font-mono-custom text-xl sm:text-2xl md:text-3xl leading-tight tracking-widest break-all">
                   {fullInput.split('').map((char, i) => {
