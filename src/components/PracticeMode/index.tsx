@@ -16,7 +16,7 @@ const defaultPersonalBest: PersonalBest = {
 };
 
 export function PracticeMode() {
-  const { gameState, currentPosition, inputHistory, startGame, validateInput, resetGame, rewindToPosition } =
+  const { gameState, currentPosition, inputHistory, startGame, validateInput, finishGame, resetGame, rewindToPosition } =
     useGameState();
   const [personalBest, setPersonalBest] = useLocalStorage<PersonalBest>(
     'piflow_personal_best',
@@ -26,6 +26,7 @@ export function PracticeMode() {
   const [mistakeCount, setMistakeCount] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
 
   // オーディオ関連のRef
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -129,28 +130,6 @@ export function PracticeMode() {
 
     // アニメーションのためのリセット
     setTimeout(() => setLastInputCorrect(null), 300);
-
-    // ゲーム終了時の処理（プレイ中から初めてミスした時）
-    if (!result.isCorrect && gameState === 'playing') {
-      // 最高記録更新チェック
-      if (currentPosition > personalBest.maxDigits) {
-        setPersonalBest({
-          ...personalBest,
-          maxDigits: currentPosition,
-          maxDigitsDate: Date.now(),
-          totalSessions: personalBest.totalSessions + 1,
-          totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
-          mistakesByIndex: personalBest.mistakesByIndex,
-          history: personalBest.history,
-        });
-      } else {
-        setPersonalBest({
-          ...personalBest,
-          totalSessions: personalBest.totalSessions + 1,
-          totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
-        });
-      }
-    }
   };
 
   // ゲーム開始時の処理
@@ -159,6 +138,30 @@ export function PracticeMode() {
     startGame();
     setMistakeCount(0);
     setSessionStartTime(Date.now());
+    setIsPracticeMode(false);
+  };
+
+  // ゲーム終了時の処理
+  const handleEndGame = () => {
+    // 最高記録更新チェック
+    if (currentPosition > personalBest.maxDigits) {
+      setPersonalBest({
+        ...personalBest,
+        maxDigits: currentPosition,
+        maxDigitsDate: Date.now(),
+        totalSessions: personalBest.totalSessions + 1,
+        totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
+        mistakesByIndex: personalBest.mistakesByIndex,
+        history: personalBest.history,
+      });
+    } else {
+      setPersonalBest({
+        ...personalBest,
+        totalSessions: personalBest.totalSessions + 1,
+        totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
+      });
+    }
+    finishGame();
   };
 
   // Enterキーでゲーム開始
@@ -177,14 +180,14 @@ export function PracticeMode() {
   const displayedDigits = inputHistory.join('');
 
   // プラクティスモード用：次の10桁を取得
-  const nextDigits = gameState === 'practice' ? getDigits(currentPosition, currentPosition + 10) : '';
+  const nextDigits = isPracticeMode ? getDigits(currentPosition, currentPosition + 10) : '';
 
   // 完全な入力文字列（"3." + 入力済み桁）
   const fullInput = '3.' + displayedDigits;
 
   // 巻き戻しハンドラー
   const handleRewind = (index: number) => {
-    if (gameState !== 'practice' || index <= 1) return; // "3."の部分はクリック不可
+    if (!isPracticeMode || index <= 1) return; // "3."の部分はクリック不可
     rewindToPosition(index);
   };
 
@@ -194,41 +197,41 @@ export function PracticeMode() {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-950 grid-background overflow-hidden">
       {/* コンテンツエリア（スクロール可能） */}
-      <div className="flex-1 overflow-y-auto px-4 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         <div className="max-w-4xl mx-auto">
           {/* ロゴ・タイトル */}
-          <div className="text-center mb-12 animate-slide-up">
-            <div className="inline-block mb-6">
+          <div className="text-center mb-6 animate-slide-up">
+            <div className="inline-block mb-3">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-400 blur-2xl opacity-50 animate-pulse"></div>
-                <h1 className="relative text-7xl md:text-8xl font-black tracking-tighter">
+                <h1 className="relative text-5xl md:text-6xl font-black tracking-tighter">
                   <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">
                     π
                   </span>
-                  <span className="text-white ml-4 font-mono-custom">PiFlow</span>
+                  <span className="text-white ml-3 font-mono-custom">PiFlow</span>
                 </h1>
               </div>
             </div>
-            <p className="text-cyan-400 text-lg font-medium tracking-wide">MASTER THE INFINITE</p>
+            <p className="text-cyan-400 text-sm font-medium tracking-wide">MASTER THE INFINITE</p>
           </div>
 
           {/* アイドル状態 */}
           {gameState === 'idle' && (
-            <div className="text-center space-y-8">
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-3xl p-12 border-2 border-blue-500/30 shadow-2xl">
-                <div className="mb-8">
-                  <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-full mb-8 animate-float shadow-2xl">
-                    <span className="text-white text-7xl font-bold">π</span>
+            <div className="text-center space-y-6">
+              <div className="bg-gray-900/50 backdrop-blur-xl rounded-lg p-6 border border-blue-500/30 shadow-2xl">
+                <div className="mb-6">
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-full mb-4 animate-float shadow-2xl">
+                    <span className="text-white text-5xl font-bold">π</span>
                   </div>
-                  <h2 className="text-4xl font-bold mb-6 text-white">
+                  <h2 className="text-2xl font-bold mb-4 text-white">
                     円周率を記憶せよ
                   </h2>
-                  <div className="space-y-3 text-gray-300">
-                    <p className="text-xl">
-                      <span className="text-6xl font-bold font-mono-custom bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">3.</span>
-                      <span className="text-lg ml-2 text-gray-400">の後に続く数字を入力</span>
+                  <div className="space-y-2 text-gray-300">
+                    <p className="text-lg">
+                      <span className="text-4xl font-bold font-mono-custom bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">3.</span>
+                      <span className="text-sm ml-2 text-gray-400">の後に続く数字を入力</span>
                     </p>
-                    <p className="text-sm text-gray-500 mt-6">
+                    <p className="text-xs text-gray-500 mt-4">
                       Enterキーまたは下のボタンで開始
                     </p>
                   </div>
@@ -236,41 +239,41 @@ export function PracticeMode() {
 
                 <button
                   onClick={handleStartGame}
-                  className="group relative px-16 py-5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
+                  className="group relative px-12 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative">練習開始</span>
                 </button>
 
                 {/* 統計情報グリッド */}
-                <div className="mt-10 grid grid-cols-2 gap-4">
-                  <div className="p-6 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-2xl border-2 border-cyan-500/50 shadow-xl text-center">
-                    <p className="text-xs text-cyan-400 mb-2 font-medium">🏆 最高記録</p>
-                    <p className="text-5xl font-bold font-mono-custom bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="p-4 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-lg border border-cyan-500/50 shadow-xl text-center">
+                    <p className="text-[10px] text-cyan-400 mb-1 font-medium">🏆 最高記録</p>
+                    <p className="text-4xl font-bold font-mono-custom bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
                       {personalBest.maxDigits}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">桁</p>
+                    <p className="text-xs text-gray-500 mt-0.5">桁</p>
                   </div>
-                  <div className="p-6 bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-2xl border-2 border-blue-500/50 shadow-xl text-center">
-                    <p className="text-xs text-blue-400 mb-2 font-medium">📊 総入力数</p>
-                    <p className="text-5xl font-bold font-mono-custom text-blue-300">
+                  <div className="p-4 bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-lg border border-blue-500/50 shadow-xl text-center">
+                    <p className="text-[10px] text-blue-400 mb-1 font-medium">📊 総入力数</p>
+                    <p className="text-4xl font-bold font-mono-custom text-blue-300">
                       {personalBest.totalDigitsTyped > 1000
                         ? (personalBest.totalDigitsTyped / 1000).toFixed(1) + 'k'
                         : personalBest.totalDigitsTyped}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">digits</p>
+                    <p className="text-xs text-gray-500 mt-0.5">digits</p>
                   </div>
                 </div>
 
                 {/* 苦手エリア分析 */}
                 {personalBest.mistakesByIndex && Object.keys(personalBest.mistakesByIndex).length > 0 && (
-                  <div className="mt-6 bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-gray-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <div className="mt-4 bg-gray-900/50 backdrop-blur-xl rounded-lg p-4 border border-gray-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-2">
                         ⚠️ 苦手エリア分析
                       </h3>
                     </div>
-                    <div className="h-32 flex items-end justify-between gap-1">
+                    <div className="h-24 flex items-end justify-between gap-1">
                       {Array.from({ length: 10 }).map((_, i) => {
                         const start = i * 5;
                         const end = start + 5;
@@ -304,53 +307,60 @@ export function PracticeMode() {
           )}
 
           {/* プレイ中 & プラクティスモード - シームレスな統合 */}
-          {(gameState === 'playing' || gameState === 'practice') && (
-            <div className="space-y-6 pb-8">
-              {/* ヘッダーバー（現在の桁数とミュートボタン） */}
-              <div className="flex justify-between items-center p-4 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-blue-500/30">
-                <div className="flex items-center gap-3">
-                  <div className="text-xl font-mono-custom font-bold text-white">
+          {gameState === 'playing' && (
+            <div className="space-y-4 pb-8">
+              {/* ヘッダーバー（現在の桁数、ベスト、ミュートボタン） */}
+              <div className="flex justify-between items-center p-2 bg-gray-900/50 backdrop-blur-xl rounded-lg border border-blue-500/30">
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-mono-custom font-bold text-white">
                     {currentPosition} <span className="text-xs text-gray-500">digits</span>
                   </div>
-                  {/* プラクティスモードバッジ */}
-                  {gameState === 'practice' && (
-                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-bold flex items-center gap-1">
-                      📚 Practice
-                    </span>
-                  )}
+                  <div className="text-sm text-gray-500">
+                    / <span className="text-cyan-400 font-bold">{personalBest.maxDigits}</span> best
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setIsMuted(!isMuted);
-                    initAudioContext();
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
-                  title={isMuted ? 'サウンドON' : 'サウンドOFF'}
-                >
-                  {isMuted ? '🔇' : '🔊'}
-                </button>
-              </div>
+                <div className="flex items-center gap-2">
+                  {/* プラクティスモードトグル */}
+                  <button
+                    onClick={() => setIsPracticeMode(!isPracticeMode)}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                      isPracticeMode
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                        : 'bg-gray-800 text-gray-400 border border-gray-700'
+                    }`}
+                    title={isPracticeMode ? 'ヒントを非表示' : 'ヒントを表示'}
+                  >
+                    {isPracticeMode ? '👁️' : '👁️‍🗨️'}
+                    <span className="hidden sm:inline">Hint</span>
+                  </button>
 
-              {/* 進捗表示 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
-                  <p className="text-xs text-gray-400 mb-2 uppercase tracking-widest">現在の桁数</p>
-                  <p className="text-5xl font-bold font-mono-custom bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                    {currentPosition}
-                  </p>
-                </div>
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-cyan-500/30 text-center">
-                  <p className="text-xs text-gray-400 mb-2 uppercase tracking-widest">ベスト</p>
-                  <p className="text-4xl font-bold font-mono-custom text-cyan-400">
-                    {personalBest.maxDigits}
-                  </p>
+                  {/* 結果画面へ */}
+                  <button
+                    onClick={handleEndGame}
+                    className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+                    title="結果を見る"
+                  >
+                    📊
+                  </button>
+
+                  {/* ミュートボタン */}
+                  <button
+                    onClick={() => {
+                      setIsMuted(!isMuted);
+                      initAudioContext();
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+                    title={isMuted ? 'サウンドON' : 'サウンドOFF'}
+                  >
+                    {isMuted ? '🔇' : '🔊'}
+                  </button>
                 </div>
               </div>
 
               {/* 語呂合わせ表示（プラクティスモード時） */}
-              {gameState === 'practice' && currentGoroawase && (
-                <div className="bg-cyan-900/20 border border-cyan-900/50 p-3 rounded-2xl text-center animate-in slide-in-from-top-2">
-                  <div className="inline-block bg-black/40 px-4 py-2 rounded-full border border-cyan-500/30">
+              {isPracticeMode && currentGoroawase && (
+                <div className="bg-cyan-900/20 border border-cyan-900/50 p-2 rounded-lg text-center animate-in slide-in-from-top-2">
+                  <div className="inline-block bg-black/40 px-3 py-1.5 rounded-full border border-cyan-500/30">
                     <span className="text-cyan-200 text-sm font-bold tracking-wide">
                       {currentGoroawase}
                     </span>
@@ -359,18 +369,18 @@ export function PracticeMode() {
               )}
 
               {/* 円周率表示 - 壁のように表示 */}
-              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 shadow-2xl max-h-[400px] overflow-y-auto ${
-                gameState === 'practice' ? 'border-cyan-500/50' : 'border-blue-500/30'
-              }`}>
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-4 border shadow-2xl max-h-[400px] overflow-y-auto transition-all ${
+                isPracticeMode ? 'border-cyan-500/50' : 'border-blue-500/30'
+              } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
-                {gameState === 'practice' && (
-                  <p className="text-xs text-cyan-400 mb-4 text-center uppercase tracking-widest">
+                {isPracticeMode && (
+                  <p className="text-xs text-cyan-400 mb-3 text-center uppercase tracking-widest">
                     💡 数字をタップで巻き戻し
                   </p>
                 )}
-                <div className="font-mono-custom text-4xl md:text-5xl leading-tight tracking-widest break-all">
+                <div className="font-mono-custom text-3xl md:text-4xl leading-tight tracking-widest break-all">
                   {fullInput.split('').map((char, i) => {
-                    const isClickable = gameState === 'practice' && i > 1;
+                    const isClickable = isPracticeMode && i > 1;
                     return (
                       <span
                         key={i}
@@ -387,26 +397,13 @@ export function PracticeMode() {
                   {/* カーソル */}
                   <span className="inline-block w-[3px] h-[1em] bg-cyan-500/70 animate-pulse align-middle ml-1 -mr-1"></span>
                   {/* ヒント：次の10桁（プラクティスモード時） */}
-                  {gameState === 'practice' && (
+                  {isPracticeMode && (
                     <span className="text-gray-600 opacity-60 select-none pointer-events-none transition-opacity duration-300">
                       {nextDigits}
                     </span>
                   )}
                 </div>
               </div>
-
-              {/* 入力フィードバック */}
-              {lastInputCorrect !== null && (
-                <div className="text-center">
-                  <span className={`inline-block px-8 py-3 rounded-full text-white font-bold text-lg ${
-                    lastInputCorrect
-                      ? 'bg-green-500 animate-pulse-glow'
-                      : 'bg-red-500 animate-shake'
-                  }`}>
-                    {lastInputCorrect ? '✓ 正解' : '✗ 不正解'}
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
@@ -431,14 +428,14 @@ export function PracticeMode() {
 
               {/* 統計情報 */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-lg p-6 border border-blue-500/30 text-center">
                   <div className="text-xs text-gray-500 uppercase">Speed</div>
                   <div className="text-4xl font-bold text-white font-mono-custom">
                     {sessionStartTime > 0 ? ((currentPosition / ((Date.now() - sessionStartTime) / 1000)) || 0).toFixed(1) : '0.0'}
                   </div>
                   <div className="text-xs text-gray-500">digits/sec</div>
                 </div>
-                <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-blue-500/30 text-center">
+                <div className="bg-gray-900/50 backdrop-blur-xl rounded-lg p-6 border border-blue-500/30 text-center">
                   <div className="text-xs text-gray-500 uppercase">Mistakes</div>
                   <div className="text-4xl font-bold text-red-400 font-mono-custom">{mistakeCount}</div>
                   <div className="text-xs text-gray-500">count</div>
@@ -446,7 +443,7 @@ export function PracticeMode() {
               </div>
 
               {/* 次のステップ */}
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border-2 border-cyan-500/30">
+              <div className="bg-gray-900/50 backdrop-blur-xl rounded-lg p-6 border border-cyan-500/30">
                 <h3 className="text-gray-300 font-bold mb-3 text-sm">Next Steps</h3>
                 <div className="flex items-start gap-3 p-4 bg-gray-800 rounded-lg">
                   <div className="text-cyan-500 mt-1 shrink-0">→</div>
@@ -469,13 +466,13 @@ export function PracticeMode() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={resetGame}
-                  className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                 >
                   メニュー
                 </button>
                 <button
                   onClick={handleStartGame}
-                  className="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  className="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                 >
                   リトライ
                 </button>
@@ -485,11 +482,11 @@ export function PracticeMode() {
         </div>
       </div>
 
-      {/* NumPad（固定配置、playing/practiceモードのみ表示） */}
-      {(gameState === 'playing' || gameState === 'practice') && (
-        <div className="flex-shrink-0 border-t-2 border-blue-500/30 bg-gray-900/80 backdrop-blur-xl">
-          <div className="max-w-md mx-auto py-6">
-            <NumPad onDigitClick={handleDigitInput} disabled={gameState !== 'playing' && gameState !== 'practice'} />
+      {/* NumPad（固定配置、playingモードのみ表示） */}
+      {gameState === 'playing' && (
+        <div className="flex-shrink-0 border-t border-blue-500/30 bg-gray-900/80 backdrop-blur-xl">
+          <div className="max-w-md mx-auto py-3">
+            <NumPad onDigitClick={handleDigitInput} disabled={false} />
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 /**
  * ゲーム状態の種類
  */
-export type GameState = 'idle' | 'playing' | 'practice' | 'finished';
+export type GameState = 'idle' | 'playing' | 'finished';
 
 /**
  * ゲームモードの種類
