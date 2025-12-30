@@ -32,6 +32,9 @@ export function PracticeMode() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const noiseBufferRef = useRef<AudioBuffer | null>(null);
 
+  // 入力済み欄のRef（自動スクロール用）
+  const inputDisplayRef = useRef<HTMLDivElement>(null);
+
   // オーディオコンテキストを初期化
   const initAudioContext = () => {
     if (!audioCtxRef.current) {
@@ -175,6 +178,13 @@ export function PracticeMode() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
+
+  // 入力済み欄の自動スクロール
+  useEffect(() => {
+    if (inputDisplayRef.current) {
+      inputDisplayRef.current.scrollTop = inputDisplayRef.current.scrollHeight;
+    }
+  }, [inputHistory]);
 
   // 入力済み桁を表示用に整形（全桁表示）
   const displayedDigits = inputHistory.join('');
@@ -373,7 +383,9 @@ export function PracticeMode() {
               </div>
 
               {/* 円周率表示 - 壁のように表示 */}
-              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl h-[100px] sm:h-[120px] md:h-[140px] overflow-y-auto transition-all ${
+              <div
+                ref={inputDisplayRef}
+                className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl h-[138px] sm:h-[165px] md:h-[206px] overflow-y-auto transition-all ${
                 isPracticeMode ? 'border-cyan-500/50' : 'border-blue-500/30'
               } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
