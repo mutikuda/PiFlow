@@ -39,7 +39,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
             onClick={() => handleClick(digit)}
             disabled={disabled}
             className={`
-              group relative h-12 sm:h-14 rounded-lg text-xl sm:text-2xl font-bold font-mono-custom
+              group relative h-14 sm:h-16 rounded-lg text-xl sm:text-2xl font-bold font-mono-custom
               transition-all duration-200 transform
               bg-gradient-to-br from-gray-800 to-gray-900
               border border-blue-500/30
@@ -70,7 +70,7 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
             onClick={() => handleClick('0')}
             disabled={disabled}
             className={`
-              group relative w-full h-12 sm:h-14 rounded-lg text-xl sm:text-2xl font-bold font-mono-custom
+              group relative w-full h-14 sm:h-16 rounded-lg text-xl sm:text-2xl font-bold font-mono-custom
               transition-all duration-200 transform
               bg-gradient-to-br from-gray-800 to-gray-900
               border border-blue-500/30

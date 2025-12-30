@@ -27,6 +27,7 @@ export function PracticeMode() {
   const [sessionStartTime, setSessionStartTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isPracticeMode, setIsPracticeMode] = useState(false);
+  const [practiceModeStartPosition, setPracticeModeStartPosition] = useState<number | null>(null);
 
   // オーディオ関連のRef
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -142,18 +143,22 @@ export function PracticeMode() {
     setMistakeCount(0);
     setSessionStartTime(Date.now());
     setIsPracticeMode(false);
+    setPracticeModeStartPosition(null);
   };
 
   // ゲーム終了時の処理
   const handleEndGame = () => {
+    // プラクティスモードに切り替えた時点の桁数をスコアとして使用
+    const finalScore = practiceModeStartPosition !== null ? practiceModeStartPosition : currentPosition;
+
     // 最高記録更新チェック
-    if (currentPosition > personalBest.maxDigits) {
+    if (finalScore > personalBest.maxDigits) {
       setPersonalBest({
         ...personalBest,
-        maxDigits: currentPosition,
+        maxDigits: finalScore,
         maxDigitsDate: Date.now(),
         totalSessions: personalBest.totalSessions + 1,
-        totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
+        totalDigitsTyped: personalBest.totalDigitsTyped + finalScore,
         mistakesByIndex: personalBest.mistakesByIndex,
         history: personalBest.history,
       });
@@ -161,7 +166,7 @@ export function PracticeMode() {
       setPersonalBest({
         ...personalBest,
         totalSessions: personalBest.totalSessions + 1,
-        totalDigitsTyped: personalBest.totalDigitsTyped + currentPosition,
+        totalDigitsTyped: personalBest.totalDigitsTyped + finalScore,
       });
     }
     finishGame();
@@ -203,6 +208,13 @@ export function PracticeMode() {
 
   // 現在位置の語呂合わせを取得
   const currentGoroawase = getCurrentGoroawase(currentPosition);
+
+  // 記録を削除
+  const handleClearRecords = () => {
+    if (window.confirm('すべての記録を削除しますか？この操作は取り消せません。')) {
+      setPersonalBest(defaultPersonalBest);
+    }
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-950 grid-background overflow-hidden">
@@ -314,6 +326,18 @@ export function PracticeMode() {
                     <div className="text-xs text-gray-600 text-center mt-3">桁数 (1 - 50)</div>
                   </div>
                 )}
+
+                {/* 記録削除ボタン */}
+                {(personalBest.maxDigits > 0 || personalBest.totalSessions > 0) && (
+                  <div className="mt-4">
+                    <button
+                      onClick={handleClearRecords}
+                      className="w-full py-2 bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 rounded-lg text-xs font-medium transition-all duration-200 border border-gray-700 hover:border-red-500/50"
+                    >
+                      🗑️ すべての記録を削除
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -334,7 +358,13 @@ export function PracticeMode() {
                 <div className="flex items-center gap-1 sm:gap-2">
                   {/* プラクティスモードトグル */}
                   <button
-                    onClick={() => setIsPracticeMode(!isPracticeMode)}
+                    onClick={() => {
+                      if (!isPracticeMode && practiceModeStartPosition === null) {
+                        // プラクティスモードに切り替える時、まだ記録していなければ現在位置を記録
+                        setPracticeModeStartPosition(currentPosition);
+                      }
+                      setIsPracticeMode(!isPracticeMode);
+                    }}
                     className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium transition-all ${
                       isPracticeMode
                         ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
@@ -424,6 +454,16 @@ export function PracticeMode() {
               <div className="border-t border-blue-500/30 bg-gray-900/80 backdrop-blur-xl rounded-lg">
                 <div className="max-w-md mx-auto py-2">
                   <NumPad onDigitClick={handleDigitInput} disabled={false} />
+
+                  {/* Give Up ボタン */}
+                  <div className="mt-3 px-3">
+                    <button
+                      onClick={handleEndGame}
+                      className="w-full py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-lg font-bold text-sm shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 transition-all duration-200 border border-red-500/50"
+                    >
+                      ギブアップ
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -435,10 +475,17 @@ export function PracticeMode() {
               {/* 最終スコア */}
               <div className="text-center">
                 <div className="text-sm font-bold text-cyan-500 mb-2 uppercase tracking-widest">Session Complete</div>
-                <h2 className="text-7xl font-black text-white font-mono-custom mb-1">{currentPosition}</h2>
+                <h2 className="text-7xl font-black text-white font-mono-custom mb-1">
+                  {practiceModeStartPosition !== null ? practiceModeStartPosition : currentPosition}
+                </h2>
                 <p className="text-gray-400">Digits Memorized</p>
+                {practiceModeStartPosition !== null && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    (プラクティスモード切り替え時点のスコア)
+                  </p>
+                )}
 
-                {currentPosition > personalBest.maxDigits && (
+                {(practiceModeStartPosition !== null ? practiceModeStartPosition : currentPosition) > personalBest.maxDigits && (
                   <div className="mt-4 animate-bounce">
                     <p className="text-5xl">🏆</p>
                     <p className="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
@@ -453,7 +500,7 @@ export function PracticeMode() {
                 <div className="bg-gray-900/50 backdrop-blur-xl rounded-lg p-6 border border-blue-500/30 text-center">
                   <div className="text-xs text-gray-500 uppercase">Speed</div>
                   <div className="text-4xl font-bold text-white font-mono-custom">
-                    {sessionStartTime > 0 ? ((currentPosition / ((Date.now() - sessionStartTime) / 1000)) || 0).toFixed(1) : '0.0'}
+                    {sessionStartTime > 0 ? (((practiceModeStartPosition !== null ? practiceModeStartPosition : currentPosition) / ((Date.now() - sessionStartTime) / 1000)) || 0).toFixed(1) : '0.0'}
                   </div>
                   <div className="text-xs text-gray-500">digits/sec</div>
                 </div>
