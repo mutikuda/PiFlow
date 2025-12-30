@@ -359,16 +359,18 @@ export function PracticeMode() {
                 </div>
               </div>
 
-              {/* 語呂合わせ表示（プラクティスモード時） */}
-              {isPracticeMode && currentGoroawase && (
-                <div className="bg-cyan-900/20 border border-cyan-900/50 p-1 rounded-lg text-center animate-in slide-in-from-top-2">
-                  <div className="inline-block bg-black/40 px-2 py-1 rounded-full border border-cyan-500/30">
-                    <span className="text-cyan-200 text-xs font-bold tracking-wide">
-                      {currentGoroawase}
-                    </span>
+              {/* 語呂合わせ表示（プラクティスモード時） - 固定高さで領域確保 */}
+              <div className="h-[32px] sm:h-[36px] flex items-center justify-center">
+                {isPracticeMode && currentGoroawase && (
+                  <div className="bg-cyan-900/20 border border-cyan-900/50 p-1 rounded-lg text-center animate-in slide-in-from-top-2">
+                    <div className="inline-block bg-black/40 px-2 py-1 rounded-full border border-cyan-500/30">
+                      <span className="text-cyan-200 text-xs font-bold tracking-wide">
+                        {currentGoroawase}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* 円周率表示 - 壁のように表示 */}
               <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl h-[100px] sm:h-[120px] md:h-[140px] overflow-y-auto transition-all ${
