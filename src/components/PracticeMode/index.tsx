@@ -310,7 +310,7 @@ export function PracticeMode() {
 
           {/* プレイ中 & プラクティスモード - シームレスな統合 */}
           {gameState === 'playing' && (
-            <div className="space-y-2 pb-2">
+            <div className="space-y-2 pb-4">
               {/* ヘッダーバー（現在の桁数、ベスト、ミュートボタン） */}
               <div className="flex justify-between items-center p-1.5 sm:p-2 bg-gray-900/50 backdrop-blur-xl rounded-lg border border-blue-500/30">
                 <div className="flex items-center gap-1.5 sm:gap-2">
@@ -371,7 +371,7 @@ export function PracticeMode() {
               )}
 
               {/* 円周率表示 - 壁のように表示 */}
-              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl max-h-[100px] sm:max-h-[120px] md:max-h-[140px] overflow-y-auto transition-all ${
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-lg p-2 border shadow-2xl h-[100px] sm:h-[120px] md:h-[140px] overflow-y-auto transition-all ${
                 isPracticeMode ? 'border-cyan-500/50' : 'border-blue-500/30'
               } ${lastInputCorrect === false ? 'animate-shake border-red-500/50' : ''}`}>
                 {/* プラクティスモード時のヒント */}
@@ -404,6 +404,13 @@ export function PracticeMode() {
                       {nextDigits}
                     </span>
                   )}
+                </div>
+              </div>
+
+              {/* NumPad（入力欄の下に配置） */}
+              <div className="border-t border-blue-500/30 bg-gray-900/80 backdrop-blur-xl rounded-lg">
+                <div className="max-w-md mx-auto py-2">
+                  <NumPad onDigitClick={handleDigitInput} disabled={false} />
                 </div>
               </div>
             </div>
@@ -483,15 +490,6 @@ export function PracticeMode() {
           )}
         </div>
       </div>
-
-      {/* NumPad（固定配置、playingモードのみ表示） */}
-      {gameState === 'playing' && (
-        <div className="flex-shrink-0 border-t border-blue-500/30 bg-gray-900/80 backdrop-blur-xl">
-          <div className="max-w-md mx-auto py-2">
-            <NumPad onDigitClick={handleDigitInput} disabled={false} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
