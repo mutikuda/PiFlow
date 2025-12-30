@@ -303,13 +303,21 @@ export function PracticeMode() {
             </div>
           )}
 
-          {/* プレイ中 */}
-          {gameState === 'playing' && (
+          {/* プレイ中 & プラクティスモード - シームレスな統合 */}
+          {(gameState === 'playing' || gameState === 'practice') && (
             <div className="space-y-6 pb-8">
               {/* ヘッダーバー（現在の桁数とミュートボタン） */}
               <div className="flex justify-between items-center p-4 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-blue-500/30">
-                <div className="text-xl font-mono-custom font-bold text-white">
-                  {currentPosition} <span className="text-xs text-gray-500">digits</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-xl font-mono-custom font-bold text-white">
+                    {currentPosition} <span className="text-xs text-gray-500">digits</span>
+                  </div>
+                  {/* プラクティスモードバッジ */}
+                  {gameState === 'practice' && (
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-bold flex items-center gap-1">
+                      📚 Practice
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => {
@@ -339,83 +347,30 @@ export function PracticeMode() {
                 </div>
               </div>
 
-              {/* 円周率表示 - 壁のように表示 */}
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 border-blue-500/30 shadow-2xl max-h-[400px] overflow-y-auto">
-                <div className="font-mono-custom text-4xl md:text-5xl leading-tight tracking-widest break-all">
-                  {fullInput.split('').map((char, i) => (
-                    <span
-                      key={i}
-                      className={`transition-colors duration-200 ${
-                        char === '.' ? 'text-cyan-400' : 'text-blue-300'
-                      }`}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                  {/* カーソル */}
-                  <span className="inline-block w-[3px] h-[1em] bg-cyan-500/70 animate-pulse align-middle ml-1 -mr-1"></span>
-                </div>
-              </div>
-
-              {/* 入力フィードバック */}
-              {lastInputCorrect !== null && (
-                <div className="text-center">
-                  <span className={`inline-block px-8 py-3 rounded-full text-white font-bold text-lg ${
-                    lastInputCorrect
-                      ? 'bg-green-500 animate-pulse-glow'
-                      : 'bg-red-500 animate-shake'
-                  }`}>
-                    {lastInputCorrect ? '✓ 正解' : '✗ 不正解'}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* プラクティスモード */}
-          {gameState === 'practice' && (
-            <div className="space-y-6 pb-8">
-              {/* ヘッダーバー（ミュートボタン） */}
-              <div className="flex justify-end p-4 bg-gray-900/50 backdrop-blur-xl rounded-2xl border-2 border-cyan-500/30">
-                <button
-                  onClick={() => {
-                    setIsMuted(!isMuted);
-                    initAudioContext();
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
-                  title={isMuted ? 'サウンドON' : 'サウンドOFF'}
-                >
-                  {isMuted ? '🔇' : '🔊'}
-                </button>
-              </div>
-
-              {/* プラクティスモードヘッダー */}
-              <div className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 backdrop-blur-xl rounded-3xl p-6 border-2 border-cyan-500/50 shadow-2xl text-center">
-                <span className="inline-block px-6 py-3 bg-cyan-500/20 border-2 border-cyan-400/50 text-cyan-300 rounded-full font-bold text-lg">
-                  📚 プラクティスモード
-                </span>
-                <p className="text-gray-400 text-sm mt-4">
-                  間違えた位置: <span className="font-bold font-mono-custom text-red-400">{currentPosition + 1}桁目</span> |
-                  到達桁数: <span className="font-bold font-mono-custom text-cyan-400">{currentPosition}桁</span>
-                </p>
-                {/* 語呂合わせ表示 */}
-                {currentGoroawase && (
-                  <div className="mt-4 inline-block bg-black/40 px-4 py-2 rounded-full border border-cyan-500/30">
+              {/* 語呂合わせ表示（プラクティスモード時） */}
+              {gameState === 'practice' && currentGoroawase && (
+                <div className="bg-cyan-900/20 border border-cyan-900/50 p-3 rounded-2xl text-center animate-in slide-in-from-top-2">
+                  <div className="inline-block bg-black/40 px-4 py-2 rounded-full border border-cyan-500/30">
                     <span className="text-cyan-200 text-sm font-bold tracking-wide">
                       {currentGoroawase}
                     </span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* 円周率表示 - 壁のように表示 + ヒント表示 + 巻き戻し機能 */}
-              <div className="bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 border-cyan-500/50 shadow-2xl max-h-[400px] overflow-y-auto">
-                <p className="text-xs text-cyan-400 mb-4 text-center uppercase tracking-widest">
-                  💡 数字をタップで巻き戻し
-                </p>
+              {/* 円周率表示 - 壁のように表示 */}
+              <div className={`bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border-2 shadow-2xl max-h-[400px] overflow-y-auto ${
+                gameState === 'practice' ? 'border-cyan-500/50' : 'border-blue-500/30'
+              }`}>
+                {/* プラクティスモード時のヒント */}
+                {gameState === 'practice' && (
+                  <p className="text-xs text-cyan-400 mb-4 text-center uppercase tracking-widest">
+                    💡 数字をタップで巻き戻し
+                  </p>
+                )}
                 <div className="font-mono-custom text-4xl md:text-5xl leading-tight tracking-widest break-all">
                   {fullInput.split('').map((char, i) => {
-                    const isClickable = i > 1; // "3."以降をクリック可能に
+                    const isClickable = gameState === 'practice' && i > 1;
                     return (
                       <span
                         key={i}
@@ -431,29 +386,27 @@ export function PracticeMode() {
                   })}
                   {/* カーソル */}
                   <span className="inline-block w-[3px] h-[1em] bg-cyan-500/70 animate-pulse align-middle ml-1 -mr-1"></span>
-                  {/* ヒント：次の10桁 */}
-                  <span className="text-gray-600 opacity-60 select-none pointer-events-none transition-opacity duration-300">
-                    {nextDigits}
-                  </span>
+                  {/* ヒント：次の10桁（プラクティスモード時） */}
+                  {gameState === 'practice' && (
+                    <span className="text-gray-600 opacity-60 select-none pointer-events-none transition-opacity duration-300">
+                      {nextDigits}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={resetGame}
-                  className="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                >
-                  もう一度チャレンジ
-                </button>
-                {personalBest.maxDigits > 0 && (
-                  <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 rounded-2xl p-4 border-2 border-cyan-500/50 text-center">
-                    <p className="text-xs text-cyan-400 mb-1 font-medium">🏆 ベスト</p>
-                    <p className="text-3xl font-bold font-mono-custom text-cyan-300">
-                      {personalBest.maxDigits}桁
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* 入力フィードバック */}
+              {lastInputCorrect !== null && (
+                <div className="text-center">
+                  <span className={`inline-block px-8 py-3 rounded-full text-white font-bold text-lg ${
+                    lastInputCorrect
+                      ? 'bg-green-500 animate-pulse-glow'
+                      : 'bg-red-500 animate-shake'
+                  }`}>
+                    {lastInputCorrect ? '✓ 正解' : '✗ 不正解'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
