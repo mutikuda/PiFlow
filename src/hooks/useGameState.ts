@@ -34,8 +34,8 @@ export function useGameState() {
         setInputHistory((prev) => [...prev, digit]);
         setCurrentPosition((prev) => prev + 1);
       } else {
-        // 不正解の場合
-        setGameState('finished');
+        // 不正解の場合、プラクティスモードに移行
+        setGameState('practice');
       }
 
       return {
