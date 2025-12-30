@@ -21,6 +21,18 @@ export interface PersonalBest {
   maxDigitsDate: number;
   totalSessions: number;
   totalDigitsTyped: number;
+  mistakesByIndex?: Record<number, number>; // 桁位置ごとのミス回数
+  history?: SessionHistory[]; // セッション履歴
+}
+
+/**
+ * セッション履歴
+ */
+export interface SessionHistory {
+  date: string;
+  score: number;
+  time: number;
+  mistakes?: number;
 }
 
 /**
