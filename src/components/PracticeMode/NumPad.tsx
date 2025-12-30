@@ -31,50 +31,63 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto px-4">
       <div className="grid grid-cols-3 gap-3">
-        {buttons.slice(0, 9).map((digit) => (
+        {buttons.slice(0, 9).map((digit, index) => (
           <button
             key={digit}
             onClick={() => handleClick(digit)}
             disabled={disabled}
             className={`
-              aspect-square rounded-2xl text-2xl font-bold
+              group relative aspect-square rounded-xl text-3xl font-bold font-mono-custom
               transition-all duration-200 transform
-              bg-gradient-to-br from-white to-gray-50
-              border-2 border-gray-200
-              shadow-lg hover:shadow-xl
+              bg-gradient-to-br from-gray-800 to-gray-900
+              border-2 border-blue-500/30
+              shadow-lg hover:shadow-2xl
+              hover:border-cyan-400/50
               hover:scale-105 active:scale-95
               disabled:opacity-50 disabled:cursor-not-allowed
               disabled:hover:scale-100
-              ${!disabled && 'hover:border-indigo-300 hover:from-indigo-50 hover:to-white'}
-              focus:outline-none focus:ring-4 focus:ring-indigo-300/50
+              overflow-hidden
+              focus:outline-none focus:ring-2 focus:ring-cyan-400/50
             `}
+            style={{ animationDelay: `${index * 0.05}s` }}
           >
-            <span className="bg-gradient-to-br from-gray-700 to-gray-900 bg-clip-text text-transparent">
+            {/* グロー効果 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/20 group-hover:to-cyan-500/20 transition-all duration-300"></div>
+
+            {/* 数字 */}
+            <span className="relative bg-gradient-to-br from-blue-300 to-cyan-200 bg-clip-text text-transparent group-hover:from-white group-hover:to-cyan-100 transition-all duration-300">
               {digit}
             </span>
           </button>
         ))}
+
         {/* 0ボタンを中央に配置 */}
         <div className="col-start-2">
           <button
             onClick={() => handleClick('0')}
             disabled={disabled}
             className={`
-              w-full aspect-square rounded-2xl text-2xl font-bold
+              group relative w-full aspect-square rounded-xl text-3xl font-bold font-mono-custom
               transition-all duration-200 transform
-              bg-gradient-to-br from-white to-gray-50
-              border-2 border-gray-200
-              shadow-lg hover:shadow-xl
+              bg-gradient-to-br from-gray-800 to-gray-900
+              border-2 border-blue-500/30
+              shadow-lg hover:shadow-2xl
+              hover:border-cyan-400/50
               hover:scale-105 active:scale-95
               disabled:opacity-50 disabled:cursor-not-allowed
               disabled:hover:scale-100
-              ${!disabled && 'hover:border-indigo-300 hover:from-indigo-50 hover:to-white'}
-              focus:outline-none focus:ring-4 focus:ring-indigo-300/50
+              overflow-hidden
+              focus:outline-none focus:ring-2 focus:ring-cyan-400/50
             `}
+            style={{ animationDelay: '0.45s' }}
           >
-            <span className="bg-gradient-to-br from-gray-700 to-gray-900 bg-clip-text text-transparent">
+            {/* グロー効果 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/20 group-hover:to-cyan-500/20 transition-all duration-300"></div>
+
+            {/* 数字 */}
+            <span className="relative bg-gradient-to-br from-blue-300 to-cyan-200 bg-clip-text text-transparent group-hover:from-white group-hover:to-cyan-100 transition-all duration-300">
               0
             </span>
           </button>
@@ -82,8 +95,8 @@ export function NumPad({ onDigitClick, disabled = false }: NumPadProps) {
       </div>
 
       {/* キーボード入力のヒント */}
-      <p className="text-center text-sm text-gray-500 mt-4">
-        キーボードの数字キーでも入力できます
+      <p className="text-center text-xs text-gray-500 mt-4 uppercase tracking-widest">
+        Keyboard: 0-9
       </p>
     </div>
   );

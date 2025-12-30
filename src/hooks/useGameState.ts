@@ -33,9 +33,18 @@ export function useGameState() {
         // 正解の場合
         setInputHistory((prev) => [...prev, digit]);
         setCurrentPosition((prev) => prev + 1);
+
+        // プラクティスモードから正解した場合、playingモードに戻る
+        if (gameState === 'practice') {
+          setGameState('playing');
+        }
       } else {
-        // 不正解の場合、プラクティスモードに移行
-        setGameState('practice');
+        // 不正解の場合
+        if (gameState === 'playing') {
+          // playingモードからの不正解はプラクティスモードに移行
+          setGameState('practice');
+        }
+        // practiceモードからの不正解はそのまま継続（何もしない）
       }
 
       return {
@@ -45,7 +54,7 @@ export function useGameState() {
         correctDigit,
       };
     },
-    [currentPosition]
+    [currentPosition, gameState]
   );
 
   /**
