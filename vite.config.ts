@@ -7,9 +7,9 @@ export default defineConfig({
   plugins: [react()],
 
   // GitHub Pagesでデプロイする場合
-  // リポジトリ名が 'PiFlow' の場合は base: '/PiFlow/'
-  // カスタムドメインまたはユーザーサイト（username.github.io）の場合は base: '/'
-  base: '/PiFlow/',
+  // /dist フォルダを使用する場合は base: '/'
+  // ルートから直接デプロイする場合は base: '/PiFlow/'
+  base: '/',
 
   resolve: {
     alias: {
