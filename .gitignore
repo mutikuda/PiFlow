@@ -11,7 +11,6 @@ node_modules
 dist
 dist-ssr
 *.local
-# docs フォルダはGitHub Pages用なのでコミットする
 
 # Editor directories and files
 .vscode/*
