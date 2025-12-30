@@ -33,19 +33,8 @@ export function useGameState() {
         // 正解の場合
         setInputHistory((prev) => [...prev, digit]);
         setCurrentPosition((prev) => prev + 1);
-
-        // プラクティスモードから正解した場合、playingモードに戻る
-        if (gameState === 'practice') {
-          setGameState('playing');
-        }
-      } else {
-        // 不正解の場合
-        if (gameState === 'playing') {
-          // playingモードからの不正解はプラクティスモードに移行
-          setGameState('practice');
-        }
-        // practiceモードからの不正解はそのまま継続（何もしない）
       }
+      // 不正解の場合は何もしない（playingモードを継続）
 
       return {
         isCorrect,
@@ -54,8 +43,15 @@ export function useGameState() {
         correctDigit,
       };
     },
-    [currentPosition, gameState]
+    [currentPosition]
   );
+
+  /**
+   * ゲームを終了して結果画面へ
+   */
+  const finishGame = useCallback(() => {
+    setGameState('finished');
+  }, []);
 
   /**
    * ゲームをリセット
@@ -79,14 +75,14 @@ export function useGameState() {
    * 指定した位置まで巻き戻す（プラクティスモード専用）
    */
   const rewindToPosition = useCallback((index: number) => {
-    if (gameState !== 'practice' || index < 0) return;
+    if (index < 0) return;
 
     // indexは"3."を含めた位置なので、-2して桁数に変換
     const targetPosition = Math.max(0, index - 2);
 
     setInputHistory((prev) => prev.slice(0, targetPosition));
     setCurrentPosition(targetPosition);
-  }, [gameState]);
+  }, []);
 
   return {
     gameState,
@@ -94,6 +90,7 @@ export function useGameState() {
     inputHistory,
     startGame,
     validateInput,
+    finishGame,
     resetGame,
     getElapsedTime,
     rewindToPosition,
