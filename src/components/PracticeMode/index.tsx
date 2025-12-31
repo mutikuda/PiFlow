@@ -35,7 +35,7 @@ export function PracticeMode() {
   // 入力済み欄のRef（自動スクロール用）
   const inputDisplayRef = useRef<HTMLDivElement>(null);
 
-  // タイプライター音をプリロード（Howler.js使用）
+  // メカニカルキーボード音をプリロード（Howler.js使用）
   const soundsRef = useRef<Howl[]>([]);
 
   useEffect(() => {
@@ -43,17 +43,17 @@ export function PracticeMode() {
     const basePath = import.meta.env.BASE_URL || '/';
     soundsRef.current = [
       new Howl({
-        src: [`${basePath}sounds/keystroke.mp3`],
+        src: [`${basePath}sounds/mechanical-switch-1.mp3`],
         volume: 0.5,
         preload: true,
       }),
       new Howl({
-        src: [`${basePath}sounds/keydown.mp3`],
+        src: [`${basePath}sounds/mechanical-switch-2.mp3`],
         volume: 0.4,
         preload: true,
       }),
       new Howl({
-        src: [`${basePath}sounds/keyup.mp3`],
+        src: [`${basePath}sounds/mechanical-switch-3.mp3`],
         volume: 0.4,
         preload: true,
       }),
@@ -65,8 +65,8 @@ export function PracticeMode() {
     };
   }, []);
 
-  // タイプライター音を再生
-  const playTypewriterSound = () => {
+  // メカニカルキーボード音を再生
+  const playMechanicalKeyboardSound = () => {
     if (isMuted || soundsRef.current.length === 0) return;
 
     try {
@@ -74,13 +74,13 @@ export function PracticeMode() {
       const randomSound = soundsRef.current[Math.floor(Math.random() * soundsRef.current.length)];
       randomSound.play();
     } catch (e) {
-      console.error('Typewriter sound failed:', e);
+      console.error('Mechanical keyboard sound failed:', e);
     }
   };
 
   const handleDigitInput = (digit: string) => {
-    // タイプライター音を再生
-    playTypewriterSound();
+    // メカニカルキーボード音を再生
+    playMechanicalKeyboardSound();
 
     const result = validateInput(digit);
     setLastInputCorrect(result.isCorrect);
