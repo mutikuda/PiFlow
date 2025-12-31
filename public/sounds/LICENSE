@@ -1,14 +1,13 @@
-Sound files in this directory are from the daktilo project:
-https://github.com/orhun/daktilo
+Sound files in this directory (mechanical-switch-*.mp3) are derived from the kbsim project:
+https://github.com/tplai/kbsim
 
-Copyright (c) 2023-2024 Orhun Parmaksız
-
-These files are dual-licensed under MIT or Apache 2.0.
-You may use them under the terms of either license.
+These files are licensed under the MIT License.
 
 ---
 
 The MIT License (MIT)
+
+Copyright (c) Thomas Lai
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
