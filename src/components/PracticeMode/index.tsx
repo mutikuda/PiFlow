@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Howl } from 'howler';
 import { useGameState } from '../../hooks/useGameState';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { PersonalBest } from '../../types';
@@ -34,67 +35,44 @@ export function PracticeMode() {
   // 入力済み欄のRef（自動スクロール用）
   const inputDisplayRef = useRef<HTMLDivElement>(null);
 
+  // タイプライター音をプリロード（Howler.js使用）
+  const soundsRef = useRef<Howl[]>([]);
+
+  useEffect(() => {
+    // 音声ファイルをプリロード
+    const basePath = import.meta.env.BASE_URL || '/';
+    soundsRef.current = [
+      new Howl({
+        src: [`${basePath}sounds/keystroke.mp3`],
+        volume: 0.5,
+        preload: true,
+      }),
+      new Howl({
+        src: [`${basePath}sounds/keydown.mp3`],
+        volume: 0.4,
+        preload: true,
+      }),
+      new Howl({
+        src: [`${basePath}sounds/keyup.mp3`],
+        volume: 0.4,
+        preload: true,
+      }),
+    ];
+
+    // クリーンアップ
+    return () => {
+      soundsRef.current.forEach(sound => sound.unload());
+    };
+  }, []);
+
   // タイプライター音を再生
   const playTypewriterSound = () => {
-    if (isMuted) return;
+    if (isMuted || soundsRef.current.length === 0) return;
 
     try {
-      // AudioContextを作成（既存のものがあれば再利用）
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-
-      const audioCtx = new AudioContextClass();
-      const currentTime = audioCtx.currentTime;
-
-      // 1. ホワイトノイズ（打鍵音）
-      const bufferSize = audioCtx.sampleRate * 0.05; // 50ms
-      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const noiseData = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        noiseData[i] = Math.random() * 2 - 1;
-      }
-
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = noiseBuffer;
-
-      // ハイパスフィルター（タイプライターの金属的な音）
-      const highpass = audioCtx.createBiquadFilter();
-      highpass.type = 'highpass';
-      highpass.frequency.value = 2000;
-      highpass.Q.value = 1;
-
-      const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(0.3, currentTime);
-      noiseGain.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.05);
-
-      // 2. 金属的な響き（高周波オシレーター）
-      const osc = audioCtx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(800, currentTime);
-      osc.frequency.exponentialRampToValueAtTime(200, currentTime + 0.03);
-
-      const oscGain = audioCtx.createGain();
-      oscGain.gain.setValueAtTime(0.15, currentTime);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.03);
-
-      // 接続
-      noise.connect(highpass);
-      highpass.connect(noiseGain);
-      noiseGain.connect(audioCtx.destination);
-
-      osc.connect(oscGain);
-      oscGain.connect(audioCtx.destination);
-
-      // 再生
-      noise.start(currentTime);
-      noise.stop(currentTime + 0.05);
-      osc.start(currentTime);
-      osc.stop(currentTime + 0.03);
-
-      // クリーンアップ（音再生後にAudioContextをクローズ）
-      setTimeout(() => {
-        audioCtx.close();
-      }, 100);
+      // ランダムに音を選択して再生（自然な音のバリエーション）
+      const randomSound = soundsRef.current[Math.floor(Math.random() * soundsRef.current.length)];
+      randomSound.play();
     } catch (e) {
       console.error('Typewriter sound failed:', e);
     }
