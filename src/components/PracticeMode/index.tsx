@@ -31,95 +31,81 @@ export function PracticeMode() {
   const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [practiceModeStartPosition, setPracticeModeStartPosition] = useState<number | null>(null);
 
-  // オーディオ関連のRef
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const noiseBufferRef = useRef<AudioBuffer | null>(null);
-
   // 入力済み欄のRef（自動スクロール用）
   const inputDisplayRef = useRef<HTMLDivElement>(null);
 
-  // オーディオコンテキストを初期化
-  const initAudioContext = () => {
-    if (!audioCtxRef.current) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContextClass) {
-        const ctx = new AudioContextClass();
-        audioCtxRef.current = ctx;
-
-        // ホワイトノイズバッファを生成（メカニカルなクリック音用）
-        const bufferSize = ctx.sampleRate;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-        noiseBufferRef.current = buffer;
-      }
-    }
-
-    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume().catch((e) => console.error('Audio resume failed', e));
-    }
-  };
-
-  // クリック音を再生（正解時）
-  const playClickSound = () => {
-    if (isMuted || !audioCtxRef.current) return;
+  // タイプライター音を再生
+  const playTypewriterSound = () => {
+    if (isMuted) return;
 
     try {
-      const ctx = audioCtxRef.current;
-      const t = ctx.currentTime;
+      // AudioContextを作成（既存のものがあれば再利用）
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
 
-      // メカニカルなクリック音（ノイズバースト）
-      if (noiseBufferRef.current) {
-        const noise = ctx.createBufferSource();
-        noise.buffer = noiseBufferRef.current;
+      const audioCtx = new AudioContextClass();
+      const currentTime = audioCtx.currentTime;
 
-        const noiseFilter = ctx.createBiquadFilter();
-        noiseFilter.type = 'highpass';
-        noiseFilter.frequency.value = 1000;
-
-        const noiseGain = ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.8, t);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
-
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(ctx.destination);
-
-        noise.start(t);
-        noise.stop(t + 0.05);
+      // 1. ホワイトノイズ（打鍵音）
+      const bufferSize = audioCtx.sampleRate * 0.05; // 50ms
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
       }
 
-      // 低音の共鳴（ボディの響き）
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = noiseBuffer;
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      // ハイパスフィルター（タイプライターの金属的な音）
+      const highpass = audioCtx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 2000;
+      highpass.Q.value = 1;
 
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.3, currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.05);
+
+      // 2. 金属的な響き（高周波オシレーター）
+      const osc = audioCtx.createOscillator();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, t);
-      osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+      osc.frequency.setValueAtTime(800, currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, currentTime + 0.03);
 
-      gain.gain.setValueAtTime(0.4, t);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+      const oscGain = audioCtx.createGain();
+      oscGain.gain.setValueAtTime(0.15, currentTime);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.03);
 
-      osc.start(t);
-      osc.stop(t + 0.1);
+      // 接続
+      noise.connect(highpass);
+      highpass.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+
+      osc.connect(oscGain);
+      oscGain.connect(audioCtx.destination);
+
+      // 再生
+      noise.start(currentTime);
+      noise.stop(currentTime + 0.05);
+      osc.start(currentTime);
+      osc.stop(currentTime + 0.03);
+
+      // クリーンアップ（音再生後にAudioContextをクローズ）
+      setTimeout(() => {
+        audioCtx.close();
+      }, 100);
     } catch (e) {
-      console.error('Audio play failed', e);
+      console.error('Typewriter sound failed:', e);
     }
   };
 
   const handleDigitInput = (digit: string) => {
+    // タイプライター音を再生
+    playTypewriterSound();
+
     const result = validateInput(digit);
     setLastInputCorrect(result.isCorrect);
-
-    // 正解時にクリック音を再生
-    if (result.isCorrect) {
-      playClickSound();
-    }
 
     // 試行回数を記録（正解・不正解に関わらず）
     const attempts = personalBest.attemptsByIndex || {};
@@ -161,7 +147,6 @@ export function PracticeMode() {
 
   // ゲーム開始時の処理
   const handleStartGame = () => {
-    initAudioContext(); // オーディオを初期化
     startGame();
     setMistakeCount(0);
     setSessionStartTime(Date.now());
@@ -490,10 +475,7 @@ export function PracticeMode() {
 
                   {/* ミュートボタン */}
                   <button
-                    onClick={() => {
-                      setIsMuted(!isMuted);
-                      initAudioContext();
-                    }}
+                    onClick={() => setIsMuted(!isMuted)}
                     className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 rounded-lg hover:bg-gray-800 text-xs"
                     title={isMuted ? 'サウンドON' : 'サウンドOFF'}
                   >
