@@ -4,6 +4,10 @@
 
 **MASTER THE INFINITE**
 
+## 🌐 デモ
+
+**[https://mutikuda.github.io/PiFlow/](https://mutikuda.github.io/PiFlow/)**
+
 ## ✨ 特徴
 
 - 🎯 **リアルタイムフィードバック**：入力した瞬間に正誤がわかる
@@ -176,6 +180,8 @@ npm run build
 ```
 
 プロジェクトは `vite.config.ts` で GitHub Pages向けに設定されています。
+
+**公開URL**: [https://mutikuda.github.io/PiFlow/](https://mutikuda.github.io/PiFlow/)
 
 ## 📈 パフォーマンス
 
